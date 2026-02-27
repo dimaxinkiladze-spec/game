@@ -1,0 +1,230 @@
+<!DOCTYPE html>
+<html lang="ka">
+<head>
+<meta charset="UTF-8">
+<title>🔥 Cube Game PRO</title>
+<style>
+body{
+  margin:0;
+  overflow:hidden;
+  font-family:Arial;
+  background:#111;
+  color:white;
+}
+h2{text-align:center;}
+#topUI{text-align:center;margin-top:10px;}
+select,button,input{padding:6px;margin:5px;}
+#scoreBoard{margin-top:5px;font-size:18px;}
+#shop{margin-top:10px;}
+#leaderboardBox{
+  position:fixed;top:10px;right:10px;background:rgba(0,0,0,0.85);
+  padding:10px;border-radius:10px;width:220px;font-size:14px;
+}
+#leaderboardBox h3{text-align:center;}
+.cube{width:50px;height:50px;position:absolute;cursor:pointer;transition:transform .15s;}
+.donateBtn{background:gold;border:none;cursor:pointer;font-weight:bold;}
+</style>
+</head>
+<body>
+
+<h2>🔥 Cube Game PRO</h2>
+
+<div id="topUI">
+
+  💛 Support:
+  <a href="https://www.donationalerts.com/r/evrything" target="_blank">
+    <button class="donateBtn">Donate</button>
+  </a>
+  <br>
+  სახელი:
+  <input type="text" id="playerName" placeholder="შეიყვანე სახელი">
+
+  დონე:
+  <select id="difficulty">
+    <option value="easy">Easy</option>
+    <option value="medium">Medium</option>
+    <option value="hard">Hard</option>
+  </select>
+
+  <button onclick="startGame()">Start</button>
+
+  <div id="scoreBoard" style="display:none">
+    ქულები: <span id="score">0</span> |
+    დრო: <span id="timeLeft">0</span>
+  </div>
+
+  <div id="shop">
+    <h3>🛒 Shop</h3>
+    <button onclick="buyDouble()">2x ქულა (20)</button>
+    <button onclick="buySlow()">Slow (15)</button>
+    <button onclick="buyTime()">+5 წამი (10)</button>
+  </div>
+</div>
+
+<div id="cubeContainer"></div>
+
+<div id="leaderboardBox">
+  <h3 id="leaderTitle">🏆 EASY Leaderboard</h3>
+  <div id="leaderboard"></div>
+  <button onclick="resetLeaderboard()">Reset</button>
+</div>
+
+<script>
+let score = 0; // ქულები ინარჩუნებს მნიშვნელობას
+let timeLeft = 0;
+let cubes = [];
+let timerInterval;
+let moveInterval;
+let gameOver = false;
+let playerName = '';
+let currentDifficulty = 'easy';
+let doubleActive = false;
+
+const cubeContainer = document.getElementById('cubeContainer');
+const scoreEl = document.getElementById('score');
+const timeEl = document.getElementById('timeLeft');
+const leaderboardEl = document.getElementById('leaderboard');
+const leaderTitle = document.getElementById('leaderTitle');
+
+const clickSound = new Audio("https://actions.google.com/sounds/v1/cartoon/pop.ogg");
+const endSound = new Audio("https://actions.google.com/sounds/v1/cartoon/clang_and_wobble.ogg");
+
+function randomColor(){
+  const colors = ['#ff4d4d','#4dff88','#4da6ff','#ffff4d','#ff66ff','#00ffff'];
+  return colors[Math.floor(Math.random()*colors.length)];
+}
+
+function createCube(){
+  const cube = document.createElement('div');
+  cube.className = 'cube';
+  cube.style.background = randomColor();
+  cubeContainer.appendChild(cube);
+
+  cube.addEventListener('click', ()=>{
+    if(gameOver) return;
+    clickSound.cloneNode().play();
+    let add = doubleActive ? 2 : 1;
+    score += add;
+    scoreEl.textContent = score;
+    cube.style.transform='scale(1.3)';
+    setTimeout(()=>cube.style.transform='',150);
+  });
+
+  cubes.push(cube);
+}
+
+function moveCubes(){
+  cubes.forEach(c=>{
+    c.style.left = Math.random()*(window.innerWidth-60)+"px";
+    c.style.top = Math.random()*(window.innerHeight-60)+"px";
+    c.style.background = randomColor();
+  });
+}
+
+function startGame(){
+  const nameInput = document.getElementById('playerName');
+  const diff = document.getElementById('difficulty').value;
+
+  if(nameInput.value.trim() === ''){
+    alert("შეიყვანე სახელი");
+    return;
+  }
+
+  playerName = nameInput.value.trim();
+  currentDifficulty = diff;
+  gameOver = false;
+  doubleActive = false;
+
+  // წაშალე ძველი კუბები
+  cubes.forEach(c=>c.remove());
+  cubes=[];
+
+  // დრო და კუბების სიჩქარე
+  timeLeft = diff === "easy" ? 30 : diff === "medium" ? 25 : 20;
+  let cubeCount = diff === "easy" ? 1 : diff === "medium" ? 2 : 3;
+  let moveSpeed = diff === "easy" ? 1000 : diff === "medium" ? 700 : 500;
+
+  for(let i=0;i<cubeCount;i++) createCube();
+
+  scoreEl.textContent = score; // ქულები უცვლელი რჩება
+  timeEl.textContent = timeLeft;
+  document.getElementById('scoreBoard').style.display='block';
+
+  moveCubes();
+  clearInterval(moveInterval);
+  moveInterval = setInterval(moveCubes, moveSpeed);
+
+  clearInterval(timerInterval);
+  timerInterval = setInterval(()=>{
+    timeLeft--;
+    timeEl.textContent = timeLeft;
+    if(timeLeft <= 0) endGame();
+  },1000);
+
+  updateLeaderTitle();
+  renderLeaderboard();
+}
+
+function endGame(){
+  gameOver=true;
+  clearInterval(timerInterval);
+  clearInterval(moveInterval);
+  endSound.play();
+  saveScore();
+}
+
+function buyDouble(){
+  if(score>=20){score-=20;doubleActive=true;scoreEl.textContent=score;setTimeout(()=>doubleActive=false,10000);}
+  else alert("ქულა არ გყოფნის!");
+}
+
+function buySlow(){
+  if(score>=15){
+    score-=15;
+    scoreEl.textContent=score;
+    clearInterval(moveInterval);
+    let moveSpeed = currentDifficulty==="easy"?1000:currentDifficulty==="medium"?700:500;
+    moveInterval=setInterval(moveCubes, moveSpeed*1.5);
+    setTimeout(()=>{moveInterval=setInterval(moveCubes, moveSpeed);},8000);
+  } else alert("ქულა არ გყოფნის!");
+}
+
+function buyTime(){
+  if(score>=10){score-=10;timeLeft+=5;scoreEl.textContent=score;timeEl.textContent=timeLeft;}
+  else alert("ქულა არ გყოფნის!");
+}
+
+function getStorageKey(){return "leaderboard_"+currentDifficulty;}
+
+function saveScore(){
+  let stored=JSON.parse(localStorage.getItem(getStorageKey()))||[];
+  stored.push({name:playerName,score:score});
+  stored=stored.sort((a,b)=>b.score-a.score).slice(0,10);
+  localStorage.setItem(getStorageKey(),JSON.stringify(stored));
+  renderLeaderboard();
+}
+
+function renderLeaderboard(){
+  const stored=JSON.parse(localStorage.getItem(getStorageKey()))||[];
+  leaderboardEl.innerHTML="";
+  stored.forEach((e,i)=>{
+    const div=document.createElement("div");
+    div.textContent=`${i+1}. ${e.name} - ${e.score}`;
+    leaderboardEl.appendChild(div);
+  });
+}
+
+function updateLeaderTitle(){
+  leaderTitle.textContent="🏆 "+currentDifficulty.toUpperCase()+" Leaderboard";
+}
+
+function resetLeaderboard(){
+  localStorage.removeItem(getStorageKey());
+  renderLeaderboard();
+}
+
+renderLeaderboard();
+</script>
+
+</body>
+</html>
