@@ -1,0 +1,210 @@
+<!DOCTYPE html>
+<html>
+<head>
+<meta charset="UTF-8">
+<title>Ultimate Shooter</title>
+<style>
+body{
+    margin:0;
+    overflow:hidden;
+    background:linear-gradient(#0f0f1a,#1a1a2e);
+    font-family:Arial;
+    color:white;
+}
+#menu{
+    position:absolute;
+    width:100%;
+    height:100%;
+    display:flex;
+    justify-content:center;
+    align-items:center;
+    flex-direction:column;
+    background:#000000cc;
+}
+button{
+    padding:15px 30px;
+    font-size:20px;
+    cursor:pointer;
+}
+#ui{
+    position:fixed;
+    top:10px;
+    left:20px;
+    font-size:18px;
+}
+.enemy,.bomb,.boss{
+    width:50px;
+    height:50px;
+    position:absolute;
+    border-radius:10px;
+    cursor:pointer;
+}
+.enemy{ background:red; }
+.bomb{ background:black; border:3px solid orange; }
+.boss{
+    background:purple;
+    width:120px;
+    height:120px;
+}
+.explosion{
+    position:absolute;
+    width:50px;
+    height:50px;
+    background:yellow;
+    border-radius:50%;
+    animation:boom 0.3s forwards;
+}
+@keyframes boom{
+    to{ transform:scale(2); opacity:0; }
+}
+.shoot{
+    position:absolute;
+    width:10px;
+    height:10px;
+    background:cyan;
+    border-radius:50%;
+    pointer-events:none;
+}
+</style>
+</head>
+<body>
+
+<div id="menu">
+<h1>🔥 Ultimate Shooter 🔥</h1>
+<button onclick="startGame()">START GAME</button>
+</div>
+
+<div id="ui">
+Score: <span id="score">0</span> |
+❤️ Lives: <span id="lives">3</span> |
+📈 Level: <span id="level">1</span> |
+🏆 High Score: <span id="highscore">0</span>
+</div>
+
+<audio id="shootSound" src="https://www.soundjay.com/button/sounds/button-16.mp3"></audio>
+<audio id="boomSound" src="https://www.soundjay.com/explosion/sounds/explosion-01.mp3"></audio>
+
+<script>
+let score=0,lives=3,level=1,speed=2;
+let gameInterval;
+let highScore=localStorage.getItem("highscore")||0;
+
+const scoreEl=document.getElementById("score");
+const livesEl=document.getElementById("lives");
+const levelEl=document.getElementById("level");
+const highEl=document.getElementById("highscore");
+highEl.innerText=highScore;
+
+function updateUI(){
+    scoreEl.innerText=score;
+    livesEl.innerText=lives;
+    levelEl.innerText=level;
+}
+
+function startGame(){
+    document.getElementById("menu").style.display="none";
+    gameInterval=setInterval(createEnemy,800);
+}
+
+function createEnemy(){
+    if(level%5===0 && Math.random()<0.1){
+        createBoss();
+        return;
+    }
+
+    const isBomb=Math.random()<0.2;
+    const obj=document.createElement("div");
+    obj.classList.add(isBomb?"bomb":"enemy");
+    obj.style.left=Math.random()*(window.innerWidth-50)+"px";
+    obj.style.top="-50px";
+    document.body.appendChild(obj);
+
+    obj.onclick=function(){
+        document.getElementById("shootSound").play();
+        createShootEffect(event.clientX,event.clientY);
+
+        if(isBomb){
+            lives--;
+        }else{
+            score++;
+            document.getElementById("boomSound").play();
+            createExplosion(obj.style.left,obj.style.top);
+
+            if(score%10===0){
+                level++;
+                speed+=0.5;
+            }
+        }
+        obj.remove();
+        updateUI();
+        checkGameOver();
+    }
+
+    function fall(){
+        let top=parseInt(obj.style.top);
+        obj.style.top=top+speed+"px";
+        if(top>window.innerHeight){
+            if(!isBomb) lives--;
+            obj.remove();
+            updateUI();
+            checkGameOver();
+        }else requestAnimationFrame(fall);
+    }
+    fall();
+}
+
+function createBoss(){
+    const boss=document.createElement("div");
+    boss.classList.add("boss");
+    boss.style.left="40%";
+    boss.style.top="50px";
+    document.body.appendChild(boss);
+
+    let bossHP=10;
+
+    boss.onclick=function(){
+        bossHP--;
+        document.getElementById("shootSound").play();
+        if(bossHP<=0){
+            score+=20;
+            boss.remove();
+        }
+        updateUI();
+    }
+
+    setTimeout(()=>{ if(boss) boss.remove(); },7000);
+}
+
+function createExplosion(x,y){
+    const boom=document.createElement("div");
+    boom.classList.add("explosion");
+    boom.style.left=x;
+    boom.style.top=y;
+    document.body.appendChild(boom);
+    setTimeout(()=>boom.remove(),300);
+}
+
+function createShootEffect(x,y){
+    const s=document.createElement("div");
+    s.classList.add("shoot");
+    s.style.left=x+"px";
+    s.style.top=y+"px";
+    document.body.appendChild(s);
+    setTimeout(()=>s.remove(),200);
+}
+
+function checkGameOver(){
+    if(lives<=0){
+        clearInterval(gameInterval);
+        if(score>highScore){
+            localStorage.setItem("highscore",score);
+        }
+        alert("💀 GAME OVER! Score: "+score);
+        location.reload();
+    }
+}
+
+updateUI();
+</script>
+</body>
+</html>
